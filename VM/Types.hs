@@ -8,7 +8,7 @@ data Segment = LCL
              | TEMP
              | POINTER
              | CONSTANT
-             deriving (Eq, Show)
+             deriving (Eq)
 
 type Value    = Int
 type Label    = String
@@ -31,7 +31,7 @@ data CompOp = EQOp
 data BranchOp = GOTO
               | LABEL
               | IFGOTO
-              deriving (Eq, Show)
+              deriving (Eq)
 
 data Command = PUSH     Segment Value
              | POP      Segment Value
@@ -43,42 +43,42 @@ data Command = PUSH     Segment Value
              | RETURN
              deriving (Eq)
 
--- Write instances
+-- Show instances
 
-segWrite :: Segment -> String
-segWrite LCL      = "local"
-segWrite THIS     = "this"
-segWrite THAT     = "that"
-segWrite STATIC   = "static"
-segWrite TEMP     = "temp"
-segWrite ARG      = "argument"
-segWrite POINTER  = "pointer"
-segWrite CONSTANT = "constant"
+instance Show Segment where
+  show LCL      = "local"
+  show THIS     = "this"
+  show THAT     = "that"
+  show STATIC   = "static"
+  show TEMP     = "temp"
+  show ARG      = "argument"
+  show POINTER  = "pointer"
+  show CONSTANT = "constant"
 
-arithWrite :: ArithLogicOp -> String
-arithWrite SUB = "sub"
-arithWrite NEG = "neg"
-arithWrite ADD = "add"
-arithWrite NOT = "not"
-arithWrite AND = "and"
-arithWrite OR  = "or"
+instance Show ArithLogicOp where
+  show SUB = "sub"
+  show NEG = "neg"
+  show ADD = "add"
+  show NOT = "not"
+  show AND = "and"
+  show OR  = "or"
 
-compWrite :: CompOp -> String
-compWrite EQOp = "eq"
-compWrite GTOp = "gt"
-compWrite LTOp = "lt"
+instance Show CompOp where
+  show EQOp = "eq"
+  show GTOp = "gt"
+  show LTOp = "lt"
 
-commandWrite :: Command -> String
-commandWrite (PUSH  seg val)   = "push " ++ segWrite seg ++ ' ':(show val)
-commandWrite (POP   seg val)   = "pop " ++ segWrite seg ++ ' ':(show val)
-commandWrite (ARLOG arilog)    = arithWrite arilog
-commandWrite (COMP  compop)    = compWrite compop
-commandWrite (BRNCH GOTO    l) = "goto " ++ l
-commandWrite (BRNCH LABEL   l) = "label " ++ l
-commandWrite (BRNCH IFGOTO  l) = "if-goto " ++ l
-commandWrite (CALL  name    n) = "call " ++ name ++ ' ':(show n)
-commandWrite (FUNCTION name n) = "function " ++ name ++ ' ':(show n)
-commandWrite RETURN            = "return"
+instance Show Command where
+  show (PUSH  seg val)   = "push " ++ show seg ++ ' ':(show val)
+  show (POP   seg val)   = "pop "  ++ show seg ++ ' ':(show val)
+  show (ARLOG arilog)    = show arilog
+  show (COMP  compop)    = show compop
+  show (BRNCH GOTO    l) = "goto " ++ l
+  show (BRNCH LABEL   l) = "label " ++ l
+  show (BRNCH IFGOTO  l) = "if-goto " ++ l
+  show (CALL  name    n) = "call " ++ name ++ ' ':(show n)
+  show (FUNCTION name n) = "function " ++ name ++ ' ':(show n)
+  show RETURN            = "return"
 
 programWrite :: Program -> String
-programWrite = unlines . map commandWrite
+programWrite = unlines . map show

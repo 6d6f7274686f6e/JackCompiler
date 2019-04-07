@@ -9,8 +9,6 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 
 import Jack.Types
 
--- Parser
-
 languageDef = emptyDef { Token.commentStart    = "/*"
                        , Token.commentEnd      = "*/"
                        , Token.commentLine     = "//"

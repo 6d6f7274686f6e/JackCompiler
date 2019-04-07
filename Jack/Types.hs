@@ -11,6 +11,7 @@ type ExpressionList  = [Expression]
 data Class = Class ClassName [ClassVarDec] [SubroutineDec]
            deriving (Eq)
 
+-- Variable Declaration Statement
 data ClassVarDec = ClassVarDec ClassVarDec_ Type [VarName]
                  deriving (Eq)
 data ClassVarDec_ = Static | Field
@@ -19,6 +20,7 @@ data ClassVarDec_ = Static | Field
 data Type = Int_ | Char_ | Boolean | Void | Type ClassName
           deriving (Eq)
 
+-- Subroutine Declaration Statement
 data SubroutineDec = SubroutineDec SubroutineDec_
                                    Type
                                    SubroutineName

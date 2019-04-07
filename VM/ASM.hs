@@ -65,6 +65,7 @@ vmPopPointer2ASM seg = [ "@SP"
                        , "M=D"
                        ]
 
+-- a counter is used here to avoid duplicate label names
 vmCommand2ASM_ST :: Filename -> Command -> State Counter [String]
 vmCommand2ASM_ST filename (PUSH seg val) = case seg of
                                              STATIC    -> return [ '@':(filename ++ '.':(show val))
