@@ -64,10 +64,13 @@ subDec2VM_st (Jack.SubroutineDec Jack.Constructor typ name params decs sts) nfie
            , VM.POP VM.POINTER 0
            ]
          ++ sts_
--- TODO: Explain differences between a Method and a Function
+-- A function is a subroutine that doesn't manipulate any specific object
 subDec2VM_st (Jack.SubroutineDec Jack.Function typ name params decs sts) nfields symtab className = do
   sts_ <- statements2VM_st sts (addVars (addParamsFunc symtab params) decs) className
   return $ [ VM.FUNCTION (className ++ '.':name) (countVars decs) ] ++ sts_
+-- A method is a subroutine that manipulates the object itself.
+-- We set the "this" pointer to the first argument passed to the method before processing its statements
+-- The object's Nth field is mapped to "this N" in the symbol table
 subDec2VM_st (Jack.SubroutineDec Jack.Method   typ name params decs sts) nfields symtab className = do
   sts_ <- statements2VM_st sts (addVars (addParams symtab params) decs) className
   return $ [ VM.FUNCTION (className ++ '.':name) (countVars decs) 
@@ -188,8 +191,8 @@ term2VM_st (Jack.StringConstant s)  symtab className = (++) <$> statements2VM_st
 -- Sometimes a term will be an expression. And this expression will itself be a term.
 -- Which will in turn be an expression.
 -- REALLY MAKES YOU THINK UH 🤔 🤔 🤔 🤔 🤔 
--- Anyway the rest of this is pretty straightforward.
 term2VM_st (Jack.ExpressionTerm e)  symtab className = expression2VM_st e symtab className
+-- Anyway the rest of this is pretty straightforward.
 term2VM_st (Jack.SubroutineTerm sc) symtab className = subCall2VM_st sc symtab className
 term2VM_st (Jack.VarArrayTerm v  i) symtab className = arrayVar2VM_push_st v i symtab className
 term2VM_st (Jack.UnaryOpTerm op t)  symtab className = (++ unaryOp2VM op) <$> term2VM_st t symtab className
@@ -214,7 +217,7 @@ op2VM Jack.Lt    = [VM.COMP VM.LTOp]
 op2VM Jack.Mult  = [VM.CALL "Math.multiply" 2]
 op2VM Jack.Div   = [VM.CALL "Math.divide" 2]
 
--- The next two function just look up the variable name in the symbol table 
+-- The next two functions just look up the variable name in the symbol table 
 -- and push/pop the appropriate SEGMENT-NUMBER combination on/out the stack
 
 var2VM_push :: Jack.VarName -> SymbolTable -> VM.Program
@@ -259,8 +262,8 @@ keywordConstant2VM (Jack.Null)   = [VM.PUSH VM.CONSTANT 0]
 keywordConstant2VM (Jack.This)   = [VM.PUSH VM.POINTER 0]
 
 -- Subroutine calls:
--- 1. Process all arguments in order
--- 2. The first argument will either be nothing, an object variable, or "this" (the current object)
+-- 1. Process all arguments in order (push them on the stack)
+-- 2. If the callee is a method, we push the object variable on the stack as the first argument ("arg 0")
 -- 3. Use the VM "CALL" command
 subCall2VM_st :: Jack.SubroutineCall -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
 subCall2VM_st (Jack.SubroutineCall mid name explist) symtab className = do
