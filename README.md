@@ -7,6 +7,8 @@ Compiles from the Jack programming language to a virtual stack machine, and from
 See the nand2tetris course for more details.
 
 ## Usage
-For now, a proper compiling interface has yet to be implemented. Compilation is done directly in GHCi after loading 
-`Main.hs`, with the `compileFolder :: Source -> Destination -> IO ()` and
-`compileFolder2VMFolder :: Source -> Destination -> IO ()` functions.
+I called this program `jc` ("Jack Compiler"). First argument is the target language (`VM` or `ASM`), next two arguments
+are the source folder and the destination.
+```
+jc (VM | ASM) source dest
+```
