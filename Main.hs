@@ -14,16 +14,31 @@ import System.Environment
 import System.Directory
 import Control.Monad
 
+-- Command-line interface:
+-- First argument  : target language (VM or ASM)
+-- Second argument : source folder
+-- Third argument  : destination folder or file
 main :: IO ()
-main = putStrLn "This program is meant to run in GHCi for now."
+main = do
+  args <- getArgs
+  let printHelp = putStrLn "Usage:" >> (putStrLn =<< ((++ " (VM|ASM) sourceFolder destinationFolder") <$> getProgName))
+  if length args /= 3 
+    then printHelp 
+    else let [target, sources, dest] = args in
+      case target of
+        "VM"  -> do putStrLn $ "Compiling \"" ++ sources ++ "\" to VM folder \"" ++ dest ++ "\" ..."
+                    compileFolder2VMFolder sources dest
+                    putStrLn "Ok."
+        "ASM" -> do putStrLn $ "Compiling \"" ++ sources ++ "\" to ASM file \"" ++ dest ++ "\" ..."
+                    compileFolder sources dest
+                    putStrLn "Ok."
+        otherwise -> printHelp
 
 compileFolder :: FilePath -> FilePath -> IO ()
-compileFolder source dest = flip jackFiles2ASMFile dest =<< sources
-  where sources = map (source ++) . filter (\s -> takeExtension s == ".jack") <$> getDirectoryContents source
+compileFolder source dest = flip jackFiles2ASMFile dest =<< getJackFiles source
 
 compileFolder2VMFolder :: FilePath -> FilePath -> IO ()
-compileFolder2VMFolder source dest = flip jackFiles2VMFolder dest =<< sources
-  where sources = map (source ++) . filter (\s -> takeExtension s == ".jack") <$> getDirectoryContents source
+compileFolder2VMFolder source dest = flip jackFiles2VMFolder dest =<< getJackFiles source
 
 jackFiles2ASMFile :: [FilePath] -> FilePath -> IO ()
 jackFiles2ASMFile sources dest = writeFile dest =<< concat <$> (forM sources $ \source -> do
@@ -44,3 +59,8 @@ jackFile2VMFile source dest = do s <- readFile source
                                  case result of
                                    Left err -> error $ "Parse error : " ++ show err
                                    Right vm -> writeFile dest vm
+
+getJackFiles :: FilePath -> IO [FilePath]
+getJackFiles source = map (addTrailingPathSeparator source ++)
+                    . filter (\s -> takeExtension s == ".jack") 
+                    <$> getDirectoryContents source
