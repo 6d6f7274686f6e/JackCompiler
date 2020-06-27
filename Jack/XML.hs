@@ -13,8 +13,8 @@ jackClass2XML (Class name vars subs) = "<class>\n"
                                      ++ "  <symbol> { </symbol>\n"
                                      ++ shwvars ++ shwsubs
                                      ++ "  <symbol> } </symbol>\n</class>\n"
-  where shwvars = addIndent $ concat $ map jackClassVarDec2XML   vars
-        shwsubs = addIndent $ concat $ map jackSubroutineDec2XML subs
+  where shwvars = addIndent $ concatMap jackClassVarDec2XML   vars
+        shwsubs = addIndent $ concatMap jackSubroutineDec2XML subs
 
 jackClassVarDec2XML :: ClassVarDec -> XML
 jackClassVarDec2XML (ClassVarDec cvd_ typ vars) = "<classVarDec>\n"
@@ -22,8 +22,7 @@ jackClassVarDec2XML (ClassVarDec cvd_ typ vars) = "<classVarDec>\n"
                                                 ++ addIndent (jackType2XML typ)
                                                 ++ addIndent shwvars
                                                 ++ "  <symbol> ; </symbol>\n</classVarDec>\n"
-  where shwvars = concat $ intersperse "<symbol> , </symbol>\n"
-                $ map (\v -> "<identifier> " ++ v ++ " </identifier>\n") vars
+  where shwvars = intercalate "<symbol> , </symbol>\n" $ map (\v -> "<identifier> " ++ v ++ " </identifier>\n") vars
 
 jackSubroutineDec2XML :: SubroutineDec -> XML
 jackSubroutineDec2XML (SubroutineDec sd_ typ name params vars sts) =
@@ -40,9 +39,9 @@ jackSubroutineDec2XML (SubroutineDec sd_ typ name params vars sts) =
   ++ addIndent shwvars
   ++ addIndent shwsts
   ++ "    <symbol> } </symbol>\n  </subroutineBody>\n</subroutineDec>\n"
-  where shwparams = concat $ intersperse "<symbol> , </symbol>\n"
-                           $ flip map params $ \(t, n) -> jackType2XML t ++ "<identifier> " ++ n ++ " </identifier>\n"
-        shwvars   = addIndent $ concat $ map jackVarDec2XML vars
+  where shwparams = intercalate "<symbol> , </symbol>\n" $ flip map params
+                      $ \(t, n) -> jackType2XML t ++ "<identifier> " ++ n ++ " </identifier>\n"
+        shwvars   = addIndent $ concatMap jackVarDec2XML vars
         shwsts    = addIndent $ jackStatements2XML sts
 
 jackVarDec2XML :: VarDec -> XML
@@ -52,11 +51,10 @@ jackVarDec2XML (VarDec typ vars) = "<varDec>\n"
                                  ++ addIndent shwvars 
                                  ++ "  <symbol> ; </symbol>\n"
                                  ++ "</varDec>\n"
-  where shwvars = concat $ intersperse "<symbol> , </symbol>\n"
-                $ map (\s -> "<identifier> " ++ s ++ " </identifier>\n") vars
+  where shwvars = intercalate "<symbol> , </symbol>\n" $ map (\s -> "<identifier> " ++ s ++ " </identifier>\n") vars
 
 jackStatements2XML :: Statements -> XML
-jackStatements2XML sts = "<statements>\n" ++ (addIndent $ concat $ map jackStatement2XML sts) ++ "</statements>\n"
+jackStatements2XML sts = "<statements>\n" ++ addIndent (concatMap jackStatement2XML sts) ++ "</statements>\n"
 
 jackType2XML :: Type -> XML
 jackType2XML (Type s) = "<identifier> " ++ s ++ " </identifier>\n"
@@ -124,7 +122,7 @@ jackSubroutineCall2XML (SubroutineCall mid name exps) = shwmid
   where shwmid = case mid of
                    Nothing -> ""
                    Just id -> "<identifier> " ++ id ++ " </identifier>\n" ++ "<symbol> . </symbol>\n"
-        shwexps = concat $ intersperse "<symbol> , </symbol>\n" $ map (\x -> jackExpression2XML x) exps
+        shwexps = intercalate "<symbol> , </symbol>\n" $ map jackExpression2XML exps
 
 jackExpression2XML :: Expression -> XML
 jackExpression2XML (Expression term rest) = "<expression>\n"

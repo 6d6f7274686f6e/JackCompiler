@@ -117,12 +117,12 @@ parseStatement = parseWhile <|> parseIf <|> parseDo <|> parseLet <|> parseReturn
                          sts <- braces parseStatements
                          return $ WhileStatement exp sts
         parseReturn = do reserved "return"
-                         a <- optionMaybe $ parseExpression
+                         a <- optionMaybe parseExpression
                          semicolon
                          return $ ReturnStatement a
         parseLet = do reserved "let"
                       nam <- identifier
-                      arr <- optionMaybe (brackets parseExpression)
+                      arr <- optionMaybe $ brackets parseExpression
                       reservedOp "="
                       exp <- parseExpression
                       semicolon
@@ -135,9 +135,9 @@ parseStatement = parseWhile <|> parseIf <|> parseDo <|> parseLet <|> parseReturn
                                                    <*> braces parseStatements
                                                    <*> optionMaybe (reserved "else" >> braces parseStatements)
 
-parseSubroutineCall = SubroutineCall <$> (optionMaybe $ try $ identifier >>= (dot >>) . return)
-                                          <*> identifier
-                                          <*> (parens $ sepBy parseExpression comma)
+parseSubroutineCall = SubroutineCall <$> optionMaybe (try $ identifier >>= (dot >>) . return)
+                                     <*> identifier
+                                     <*> parens (sepBy parseExpression comma)
 
 parseExpression :: Parser Expression
 parseExpression = Expression <$> parseTerm <*> parseTerms_

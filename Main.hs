@@ -32,7 +32,7 @@ main = do
         "ASM" -> do putStrLn $ "Compiling \"" ++ sources ++ "\" to ASM file \"" ++ dest ++ "\" ..."
                     compileFolder sources dest
                     putStrLn "Ok."
-        otherwise -> printHelp
+        _     -> printHelp
 
 compileFolder :: FilePath -> FilePath -> IO ()
 compileFolder source dest = flip jackFiles2ASMFile dest =<< getJackFiles source
@@ -41,7 +41,7 @@ compileFolder2VMFolder :: FilePath -> FilePath -> IO ()
 compileFolder2VMFolder source dest = flip jackFiles2VMFolder dest =<< getJackFiles source
 
 jackFiles2ASMFile :: [FilePath] -> FilePath -> IO ()
-jackFiles2ASMFile sources dest = writeFile dest =<< concat <$> (forM sources $ \source -> do
+jackFiles2ASMFile sources dest = writeFile dest . concat =<< forM sources (\source -> do
                                    s <- readFile source
                                    let vmresult = VM.programWrite . class2VM <$> parseJack s
                                        result   = vm2ASM (sanitizeFilename source) <$> vmresult

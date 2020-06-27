@@ -28,23 +28,23 @@ class2VM_st :: Jack.Class -> State Counter VM.Program
 class2VM_st (Jack.Class name classdecs subdecs) =
   let nfields = countFields classdecs
       symtab = addClassVars (emptySymbolTable name) classdecs
-  in concat <$> (forM subdecs $ \dec -> subDec2VM_st dec nfields symtab name)
+  in concat <$> forM subdecs (\dec -> subDec2VM_st dec nfields symtab name)
 
 countFields :: [Jack.ClassVarDec] -> Int
 countFields [] = 0
-countFields ((Jack.ClassVarDec Jack.Field _ f):rest) = (length f) + countFields rest
-countFields ((Jack.ClassVarDec _          _ _):rest) = countFields rest
+countFields ((Jack.ClassVarDec Jack.Field _ f):rest) = length f + countFields rest
+countFields (Jack.ClassVarDec {}              :rest) = countFields rest
 
 addClassVars :: SymbolTable -> [Jack.ClassVarDec] -> SymbolTable
 addClassVars symtab decs = addStatics 0 decs
   where addStatics _ [] = addFields 0 decs
         addStatics n ((Jack.ClassVarDec Jack.Field  _ _  ):rest) = addStatics n rest
-        addStatics n ((Jack.ClassVarDec Jack.Static t nms):rest) = addSts n t nms $ addStatics (n + (length nms)) rest
+        addStatics n ((Jack.ClassVarDec Jack.Static t nms):rest) = addSts n t nms $ addStatics (n + length nms) rest
         addSts _ _ []     symtab = symtab
         addSts n t (s:ss) symtab = M.insert s (t, VM.STATIC, n) $ addSts (n+1) t ss symtab
         addFields _ [] = symtab
         addFields n ((Jack.ClassVarDec Jack.Static _ _  ):rest) = addFields n rest
-        addFields n ((Jack.ClassVarDec Jack.Field  t nms):rest) = addFds n t nms $ addFields (n + (length nms)) rest
+        addFields n ((Jack.ClassVarDec Jack.Field  t nms):rest) = addFds n t nms $ addFields (n + length nms) rest
         addFds _ _ []     symtab = symtab
         addFds n t (f:fs) symtab = M.insert f (t, VM.THIS, n) $ addFds (n+1) t fs symtab
 
@@ -67,7 +67,7 @@ subDec2VM_st (Jack.SubroutineDec Jack.Constructor typ name params decs sts) nfie
 -- A function is a subroutine that doesn't manipulate any specific object
 subDec2VM_st (Jack.SubroutineDec Jack.Function typ name params decs sts) nfields symtab className = do
   sts_ <- statements2VM_st sts (addVars (addParamsFunc symtab params) decs) className
-  return $ [ VM.FUNCTION (className ++ '.':name) (countVars decs) ] ++ sts_
+  return $ VM.FUNCTION (className ++ '.':name) (countVars decs) : sts_
 -- A method is a subroutine that manipulates the object itself.
 -- We set the "this" pointer to the first argument passed to the method before processing its statements
 -- The object's Nth field is mapped to "this N" in the symbol table
@@ -87,7 +87,7 @@ countVars ((Jack.VarDec _ v):rest) = length v + countVars rest
 addVars :: SymbolTable -> [Jack.VarDec] -> SymbolTable
 addVars symtab = loop 0
   where loop _ []                             = symtab
-        loop n ((Jack.VarDec typ names):rest) = addVars_ n typ names $ loop (n + (length names)) rest
+        loop n ((Jack.VarDec typ names):rest) = addVars_ n typ names $ loop (n + length names) rest
         addVars_ _ _ []     symtab = symtab
         addVars_ n t (s:ss) symtab = M.insert s (t, VM.LCL, n) $ addVars_ (n+1) t ss symtab
 
@@ -102,11 +102,11 @@ addParams_ ((typ, name):rest) n symtab = M.insert name (typ, VM.ARG, n) $ addPar
 
 -- Convert each statement
 statements2VM_st :: Jack.Statements -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
-statements2VM_st sts symtab className = concat <$> (forM sts $ \statement -> statement2VM_st statement symtab className)
+statements2VM_st sts symtab className = concat <$> forM sts (\statement -> statement2VM_st statement symtab className)
 
 -- Each statement type is handled differently
 statement2VM_st :: Jack.Statement -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
--- Let statements have different behaviours if they concern array values
+-- Let statements have different behaviours if they act on array values
 -- We process the expression and then POP it at the right place (thanks to var2VM_pop or arrayVar2VM_pop)
 statement2VM_st (Jack.LetStatement var marr expr) symtab className =
   (++) <$> expression2VM_st expr symtab className <*> case marr of
@@ -157,7 +157,7 @@ statement2VM_st (Jack.DoStatement subcall)  symtab className =
 -- We need to push either the given expression or 0 onto the stack before using the VM return command
 statement2VM_st (Jack.ReturnStatement mexp) symtab className =
   case mexp of
-    Nothing -> return $ [VM.PUSH VM.CONSTANT 0, VM.RETURN]
+    Nothing -> return [VM.PUSH VM.CONSTANT 0, VM.RETURN]
     Just xp -> (++ [VM.RETURN]) <$> expression2VM_st xp symtab className
 
 -- An Expression is a bunch of terms put together with operators
@@ -168,24 +168,24 @@ statement2VM_st (Jack.ReturnStatement mexp) symtab className =
 -- 3. Repeat step 2 until there's nothing left.
 expression2VM_st :: Jack.Expression -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
 expression2VM_st (Jack.Expression t1 ts) symtab className =
-  (++) <$> (term2VM_st t1 symtab className)
-       <*> (concat <$> (forM ts $ \(op, t2) -> ((++ op2VM op) <$>) $ term2VM_st t2 symtab className))
+  (++) <$> term2VM_st t1 symtab className
+       <*> (concat <$> forM ts (\(op, t2) -> ((++ op2VM op) <$>) $ term2VM_st t2 symtab className))
 
 term2VM_st :: Jack.Term -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
 -- A little bit of trickery to handle string constants, using the OS implementation
 term2VM_st (Jack.StringConstant s)  symtab className = (++) <$> statements2VM_st sts symtab className <*> tempstr
-  where sts = [Jack.LetStatement "0stringConstant"
+  where sts = Jack.LetStatement "0stringConstant"
                                  Nothing
-                                 $ Jack.Expression (Jack.SubroutineTerm $ Jack.SubroutineCall
-                                                      (Just "String") 
-                                                      "new" 
-                                                      [Jack.Expression (Jack.IntegerConstant $ length s) []])
-                                                   []]
-              ++ map ((\c -> Jack.DoStatement (Jack.SubroutineCall
-                                                (Just "0stringConstant") 
-                                                "appendChar"
-                                                [Jack.Expression (Jack.IntegerConstant c) []]))
-                    . getCharCode) s
+                                 (Jack.Expression (Jack.SubroutineTerm $ Jack.SubroutineCall
+                                                     (Just "String") 
+                                                     "new" 
+                                                     [Jack.Expression (Jack.IntegerConstant $ length s) []])
+                                                  [])
+              : map ((\c -> Jack.DoStatement (Jack.SubroutineCall
+                                               (Just "0stringConstant") 
+                                               "appendChar"
+                                               [Jack.Expression (Jack.IntegerConstant c) []]))
+                  . getCharCode) s
         getCharCode = ord
         tempstr = term2VM_st (Jack.VarTerm "0stringConstant") symtab className
 -- Sometimes a term will be an expression. And this expression will itself be a term.
@@ -196,7 +196,7 @@ term2VM_st (Jack.ExpressionTerm e)  symtab className = expression2VM_st e symtab
 term2VM_st (Jack.SubroutineTerm sc) symtab className = subCall2VM_st sc symtab className
 term2VM_st (Jack.VarArrayTerm v  i) symtab className = arrayVar2VM_push_st v i symtab className
 term2VM_st (Jack.UnaryOpTerm op t)  symtab className = (++ unaryOp2VM op) <$> term2VM_st t symtab className
-term2VM_st (Jack.IntegerConstant n) _      className = return $ [VM.PUSH VM.CONSTANT n]
+term2VM_st (Jack.IntegerConstant n) _      className = return [VM.PUSH VM.CONSTANT n]
 term2VM_st (Jack.VarTerm var)       symtab className = return $ var2VM_push var symtab
 term2VM_st (Jack.KeywordConstant k) _      className = return $ keywordConstant2VM k
 
@@ -256,10 +256,10 @@ arrayVar2VM_pop_st :: Jack.VarName -> Jack.Expression -> SymbolTable -> Jack.Cla
 arrayVar2VM_pop_st var exp symtab className = (++ [VM.POP VM.THAT 0]) <$> arrayVar2VM_st var exp symtab className
 
 keywordConstant2VM :: Jack.KeywordConstant_ -> VM.Program
-keywordConstant2VM (Jack.True_)  = [VM.PUSH VM.CONSTANT 0, VM.ARLOG VM.NOT]
-keywordConstant2VM (Jack.False_) = [VM.PUSH VM.CONSTANT 0]
-keywordConstant2VM (Jack.Null)   = [VM.PUSH VM.CONSTANT 0]
-keywordConstant2VM (Jack.This)   = [VM.PUSH VM.POINTER 0]
+keywordConstant2VM Jack.True_  = [VM.PUSH VM.CONSTANT 0, VM.ARLOG VM.NOT]
+keywordConstant2VM Jack.False_ = [VM.PUSH VM.CONSTANT 0]
+keywordConstant2VM Jack.Null   = [VM.PUSH VM.CONSTANT 0]
+keywordConstant2VM Jack.This   = [VM.PUSH VM.POINTER 0]
 
 -- Subroutine calls:
 -- 1. Process all arguments in order (push them on the stack)
@@ -267,7 +267,7 @@ keywordConstant2VM (Jack.This)   = [VM.PUSH VM.POINTER 0]
 -- 3. Use the VM "CALL" command
 subCall2VM_st :: Jack.SubroutineCall -> SymbolTable -> Jack.ClassName -> State Counter VM.Program
 subCall2VM_st (Jack.SubroutineCall mid name explist) symtab className = do
-  pushList <- ((VM.PUSH VM.POINTER 0):) . concat <$> mapM (\x -> expression2VM_st x symtab className) explist
+  pushList <- (VM.PUSH VM.POINTER 0 :) . concat <$> mapM (\x -> expression2VM_st x symtab className) explist
   let nargs    = length explist + 1
   case mid of
     Nothing -> return $ pushList ++ [VM.CALL (className ++ '.':name) nargs ]
@@ -276,6 +276,6 @@ subCall2VM_st (Jack.SubroutineCall mid name explist) symtab className = do
                  Just (Jack.Type typ, seg, n) -> return $ var2VM_push id symtab 
                                                    ++ tail pushList
                                                    ++ [ VM.CALL (typ ++ '.':name) nargs ]
-                 otherwise                    -> error $ "Compilation : Trying to call a method on a non-object type.\n"
+                 _                            -> error $ "Compilation : Trying to call a method on a non-object type.\n"
                                                        ++ " In SubroutineCall : " 
                                                        ++ show (Jack.SubroutineCall mid name explist)

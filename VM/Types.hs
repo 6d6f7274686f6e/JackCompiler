@@ -69,15 +69,15 @@ instance Show CompOp where
   show LTOp = "lt"
 
 instance Show Command where
-  show (PUSH  seg val)   = "push " ++ show seg ++ ' ':(show val)
-  show (POP   seg val)   = "pop "  ++ show seg ++ ' ':(show val)
+  show (PUSH  seg val)   = "push " ++ show seg ++ ' ':show val
+  show (POP   seg val)   = "pop "  ++ show seg ++ ' ':show val
   show (ARLOG arilog)    = show arilog
   show (COMP  compop)    = show compop
   show (BRNCH GOTO    l) = "goto " ++ l
   show (BRNCH LABEL   l) = "label " ++ l
   show (BRNCH IFGOTO  l) = "if-goto " ++ l
-  show (CALL  name    n) = "call " ++ name ++ ' ':(show n)
-  show (FUNCTION name n) = "function " ++ name ++ ' ':(show n)
+  show (CALL  name    n) = "call " ++ name ++ ' ':show n
+  show (FUNCTION name n) = "function " ++ name ++ ' ':show n
   show RETURN            = "return"
 
 programWrite :: Program -> String

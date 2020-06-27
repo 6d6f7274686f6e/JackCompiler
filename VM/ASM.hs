@@ -11,7 +11,7 @@ type Counter       = Int
 type Filename      = String
 
 vmPop2ASM :: String -> Value -> [String]
-vmPop2ASM seg val = [ '@':(show val)
+vmPop2ASM seg val = [ '@':show val
                     , "D=A"
                     , '@':seg
                     , "M=M+D"
@@ -22,14 +22,14 @@ vmPop2ASM seg val = [ '@':(show val)
                     , '@':seg
                     , "A=M"
                     , "M=D"
-                    , '@':(show val)
+                    , '@':show val
                     , "D=A"
                     , '@':seg
                     , "M=M-D"
                     ]
 
 vmPush2ASM :: String -> Value -> [String]
-vmPush2ASM seg val = [ '@':(show val)
+vmPush2ASM seg val = [ '@':show val
                      , "D=A"
                      , '@':seg
                      , "M=M+D"
@@ -40,7 +40,7 @@ vmPush2ASM seg val = [ '@':(show val)
                      , "M=D"
                      , "@SP"
                      , "M=M+1"
-                     , '@':(show val)
+                     , '@':show val
                      , "D=A"
                      , '@':seg
                      , "M=M-D"
@@ -68,7 +68,7 @@ vmPopPointer2ASM seg = [ "@SP"
 -- a counter is used here to avoid duplicate label names
 vmCommand2ASM_ST :: Filename -> Command -> State Counter [String]
 vmCommand2ASM_ST filename (PUSH seg val) = case seg of
-                                             STATIC    -> return [ '@':(filename ++ '.':(show val))
+                                             STATIC    -> return [ '@':(filename ++ '.':show val)
                                                             , "D=M"
                                                             , "@SP"
                                                             , "A=M"
@@ -76,7 +76,7 @@ vmCommand2ASM_ST filename (PUSH seg val) = case seg of
                                                             , "@SP"
                                                             , "M=M+1"
                                                             ]
-                                             TEMP      -> return [ '@':(show $ val + 5)
+                                             TEMP      -> return [ '@':show (val + 5)
                                                             , "D=M"
                                                             , "@SP"
                                                             , "A=M"
@@ -85,11 +85,11 @@ vmCommand2ASM_ST filename (PUSH seg val) = case seg of
                                                             , "M=M+1"
                                                             ]
                                              POINTER   -> case val of
-                                                            0         -> return $ vmPushPointer2ASM "THIS"
-                                                            1         -> return $ vmPushPointer2ASM "THAT"
-                                                            otherwise -> error $ "Illegal operation : push pointer "
+                                                            0 -> return $ vmPushPointer2ASM "THIS"
+                                                            1 -> return $ vmPushPointer2ASM "THAT"
+                                                            _ -> error $ "Illegal operation : push pointer "
                                                                                ++ show val
-                                             CONSTANT  -> return [ '@':(show val)
+                                             CONSTANT  -> return [ '@':show val
                                                             , "D=A"
                                                             , "@SP"
                                                             , "A=M"
@@ -97,29 +97,29 @@ vmCommand2ASM_ST filename (PUSH seg val) = case seg of
                                                             , "@SP"
                                                             , "M=M+1"
                                                             ]
-                                             otherwise -> return $ vmPush2ASM (show seg) val
+                                             _         -> return $ vmPush2ASM (show seg) val
 vmCommand2ASM_ST filename (POP  seg val) = case seg of
                                              STATIC    -> return [ "@SP"
                                                             , "M=M-1"
                                                             , "A=M"
                                                             , "D=M"
-                                                            , '@':(filename ++ '.':(show val))
+                                                            , '@':(filename ++ '.':show val)
                                                             , "M=D"
                                                             ]
                                              TEMP      -> return [ "@SP"
                                                             , "M=M-1"
                                                             , "A=M"
                                                             , "D=M"
-                                                            , '@':(show $ 5 + val)
+                                                            , '@':show (5 + val)
                                                             , "M=D"
                                                             ]
                                              POINTER   -> case val of
-                                                            0         -> return $ vmPopPointer2ASM "THIS"
-                                                            1         -> return $ vmPopPointer2ASM "THAT"
-                                                            otherwise -> error $ "Illegal operation : pop pointer " 
+                                                            0 -> return $ vmPopPointer2ASM "THIS"
+                                                            1 -> return $ vmPopPointer2ASM "THAT"
+                                                            _ -> error $ "Illegal operation : pop pointer " 
                                                                                ++ show val
                                              CONSTANT  -> error $ "Illegal operation : pop constant " ++ show val
-                                             otherwise -> return $ vmPop2ASM  (show seg) val
+                                             _         -> return $ vmPop2ASM  (show seg) val
 vmCommand2ASM_ST _        (ARLOG op)     = case op of
                                              NEG -> return [ "@SP"
                                                       , "A=M-1"
@@ -165,13 +165,13 @@ vmCommand2ASM_ST filename (COMP compop) = do c <- get
                                                          , "M=M-1"
                                                          , "A=M-1"
                                                          , "D=M-D"
-                                                         , '@':filename ++ ".EQ.false." ++ (show c)
+                                                         , '@':filename ++ ".EQ.false." ++ show c
                                                          , "D;JNE"
-                                                         , '@':filename ++ ".EQ.true." ++ (show c)
+                                                         , '@':filename ++ ".EQ.true." ++ show c
                                                          , "0;JMP"
-                                                         , '(':filename ++ ".EQ.false." ++ (show c) ++ ")"
+                                                         , '(':filename ++ ".EQ.false." ++ show c ++ ")"
                                                          , "D=-1"
-                                                         , '(':filename ++ ".EQ.true." ++ (show c) ++ ")"
+                                                         , '(':filename ++ ".EQ.true." ++ show c ++ ")"
                                                          , "@SP"
                                                          , "A=M-1"
                                                          , "M=!D"
@@ -233,7 +233,7 @@ vmCommand2ASM_ST filename (CALL     name nArgs)  = do c <- get
                                                         , "D=M"
                                                         , "@ARG"
                                                         , "M=D"
-                                                        , '@':(show $ nArgs + 5)
+                                                        , '@':show (nArgs + 5)
                                                         , "D=A"
                                                         , "@ARG"
                                                         , "M=M-D"
@@ -294,7 +294,7 @@ vmCommand2ASM_ST filename RETURN                 = return [ "@LCL"
                                                      , "A=M"
                                                      , "0;JMP"
                                                      ]
-vmCommand2ASM_ST filename (FUNCTION name nLocal) = return $ ('(':name ++ ")"):(concat $ replicate nLocal $ push0)
+vmCommand2ASM_ST filename (FUNCTION name nLocal) = return $ ('(':name ++ ")"):concat (replicate nLocal push0)
   where push0 = [ "@SP"
                 , "M=M+1"
                 , "A=M-1"
@@ -318,7 +318,7 @@ parseVMLine s = let ws = words s
                             "GT"      -> COMP GTOp
                             "LT"      -> COMP LTOp
                             "RETURN"  -> RETURN
-                            otherwise -> error $ "Error : unrecognised command : " ++ head ws
+                            _         -> error $ "Error : unrecognised command : " ++ head ws
                      2 -> let [command, label] = ws
                           in case map toUpper command of
                                "GOTO"     -> BRNCH GOTO   label
@@ -326,13 +326,13 @@ parseVMLine s = let ws = words s
                                "IF-GOTO"  -> BRNCH IFGOTO label
                                "CALL"     -> CALL         label 0
                                "FUNCTION" -> FUNCTION     label 0
-                               otherwise  -> error $ "Error : unrecognised command : " ++ command
+                               _          -> error $ "Error : unrecognised command : " ++ command
                      3 -> let [command, arg1, arg2] = ws 
                            in if map toUpper command == "PUSH" || map toUpper command == "POP"
                               then let parsedCom = case map toUpper command of
-                                                     "PUSH"     -> PUSH
-                                                     "POP"      -> POP
-                                                     otherwise  -> error $ "Error : unrecognised command : " ++ command
+                                                     "PUSH" -> PUSH
+                                                     "POP"  -> POP
+                                                     _      -> error $ "Error : unrecognised command : " ++ command
                                        parsedSeg = case map toUpper arg1 of
                                                      "THIS"     -> THIS
                                                      "THAT"     -> THAT
@@ -342,14 +342,14 @@ parseVMLine s = let ws = words s
                                                      "STATIC"   -> STATIC
                                                      "TEMP"     -> TEMP
                                                      "CONSTANT" -> CONSTANT
-                                                     otherwise  -> error $ "Error : unrecognised segment : " ++ arg1
+                                                     _          -> error $ "Error : unrecognised segment : " ++ arg1
                                    in parsedCom parsedSeg (read arg2)
                               else let parsedCom = case map toUpper command of
                                                      "FUNCTION" -> FUNCTION
                                                      "CALL"     -> CALL
-                                                     otherwise  -> error $ "Error : unrecognised command : " ++ command
+                                                     _         -> error $ "Error : unrecognised command : " ++ command
                                    in parsedCom arg1 (read arg2)
-                     otherwise -> error $ "Error : no parse : " ++ s
+                     _ -> error $ "Error : no parse : " ++ s
 
 fileBegin :: [String]
 fileBegin = [ "@256"
@@ -366,7 +366,7 @@ fileEnd = [ "(PROGRAM-END-LOOP-INF)"
 
 vm2ASM :: Filename -> String -> String
 vm2ASM filename = unlines . vmCommands2ASM filename . map parseVMLine . filter isNonEmpty . map noComment . lines
-  where isNonEmpty s = "" /= (filter (\c -> not(c `elem` "\r\t\n ")) s)
+  where isNonEmpty s = "" /= filter (`notElem` "\r\t\n ") s
 
 noComment :: String -> String
 noComment s = take (noComLength s) s
